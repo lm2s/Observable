@@ -50,19 +50,7 @@ public class ImmutableObservable<T> {
     }
     
     public func observe(_ queue: DispatchQueue? = nil, _ observer: @escaping Observer) -> Disposable {
-        lock.lock()
-        defer { lock.unlock() }
-        
-        let id = uniqueID.next()!
-        
-        observers[id] = (observer, queue ?? Observable_observersQueue)
-        observer(value, nil)
-        
-        let disposable = Disposable { [weak self] in
-            self?.observers[id] = nil
-        }
-        
-        return disposable
+        return observeUnsafe(queue ?? Observable_observersQueue, observer)
     }
     
     public func removeAllObservers() {
