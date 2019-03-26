@@ -1,5 +1,7 @@
 import Foundation
 
+let Observable_observersQueue = DispatchQueue(label: "Observable.observersQueue")
+
 public class ImmutableObservable<T> {
     
     public typealias Observer = (T, T?) -> Void
@@ -31,13 +33,29 @@ public class ImmutableObservable<T> {
         self._value = value
     }
     
-    public func observe(_ queue: DispatchQueue? = nil, _ observer: @escaping Observer) -> Disposable {
+    public func observeUnsafe(_ queue: DispatchQueue? = nil, _ observer: @escaping Observer) -> Disposable {
         lock.lock()
         defer { lock.unlock() }
         
         let id = uniqueID.next()!
         
         observers[id] = (observer, queue)
+        observer(value, nil)
+        
+        let disposable = Disposable { [weak self] in
+            self?.observers[id] = nil
+        }
+        
+        return disposable
+    }
+    
+    public func observe(_ queue: DispatchQueue? = nil, _ observer: @escaping Observer) -> Disposable {
+        lock.lock()
+        defer { lock.unlock() }
+        
+        let id = uniqueID.next()!
+        
+        observers[id] = (observer, queue ?? Observable_observersQueue)
         observer(value, nil)
         
         let disposable = Disposable { [weak self] in
