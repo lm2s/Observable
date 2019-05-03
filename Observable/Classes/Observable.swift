@@ -13,24 +13,28 @@ public class ImmutableObservable<T> {
     
     fileprivate var _value: T {
         didSet {
+            let newValue = _value
             observers.values.forEach { observer, dispatchQueue in
                 if let dispatchQueue = dispatchQueue {
                     dispatchQueue.async {
-                        observer(self.value, oldValue)
+                        observer(newValue, oldValue)
                     }
                 } else {
-                    observer(value, oldValue)
+                    observer(newValue, oldValue)
                 }
             }
         }
     }
-    
+  
     public var value: T {
         return _value
     }
+      
+    fileprivate var _onDispose: () -> Void
     
-    public init(_ value: T) {
+    public init(_ value: T, onDispose: @escaping () -> Void = {}) {
         self._value = value
+        self._onDispose = onDispose
     }
     
     public func observeUnsafe(_ queue: DispatchQueue? = nil, _ observer: @escaping Observer) -> Disposable {
@@ -44,6 +48,7 @@ public class ImmutableObservable<T> {
         
         let disposable = Disposable { [weak self] in
             self?.observers[id] = nil
+            self?._onDispose()
         }
         
         return disposable
@@ -55,6 +60,10 @@ public class ImmutableObservable<T> {
     
     public func removeAllObservers() {
         observers.removeAll()
+    }
+    
+    public func asImmutable() -> ImmutableObservable<T> {
+        return self
     }
 }
 
